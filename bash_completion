@@ -1,0 +1,30 @@
+_pp4_streams() 
+{
+	local cur prev opts
+	COMPREPLY=()
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+	opts=$(. pp4 streams | cut -d" " -f2)
+	COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+	return 0
+}
+
+_pp4_labels() 
+{
+	local cur prev opts
+	COMPREPLY=()
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+	
+	if [[ ${cur} == @* ]] ; then
+		opts=$(. pp4 labels | cut -d" " -f2 | sed -s 's/^/@/')
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		return 0
+	fi
+}
+
+complete -F _pp4_streams pp4clone
+complete -F _pp4_labels pp4sync
+complete -F _pp4_labels pp4label2stream

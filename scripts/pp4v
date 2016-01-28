@@ -1,0 +1,3 @@
+#!/bin/bash
+CLIENT=`pp4 client -o | grep -e "^Client:" | cut -f2`
+p4v -p $P4PORT -u $P4USER -c $CLIENT &

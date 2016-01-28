@@ -1,0 +1,20 @@
+#!/bin/bash
+
+function stream_from_workspace() {
+	CLIENT="$1"
+	pp4 client -o $CLIENT | grep -e "^Stream:" | cut -f2
+}
+
+function workspace_from_changelist() {
+	CL=$1
+	pp4 describe -s $CL | grep -e "Change [0-9]* by" | cut -d" " -f4 | cut -d"@" -f2
+}
+
+function stream_from_changelist() {
+	WS=`workspace_from_changelist $1`
+	stream_from_workspace $WS
+}
+
+function get_current_workspace() {
+	pp4 client -o | grep -e "^Client:" | cut -f2
+}

@@ -1,0 +1,55 @@
+#!/bin/bash
+#P4CONFIG=".p4config" p4 "$@"
+
+if [ "$1" = "" ]; then	
+	echo "Usage: $0 DEPOTPATH"
+	echo "The command creates a new p4 workspace from the path specified to the current working directory"
+	exit 1
+fi
+
+if [ "$P4USER" = "" ]; then
+	echo "P4USER is not specified"
+	exit 1
+fi
+
+DEPOT=$1
+DEPOTX=${DEPOT//\//-}
+DIR=`pwd`
+DIRX=${DIR//\//-}
+HOST=`hostname`
+
+CLIENT="${P4USER}_${HOST}_${DEPOTX}_${DIRX}"
+
+P4EDITOR=nano
+
+echo Creating client $CLIENT
+
+
+# Try to search for the depot path in P4 streams
+STREAMSPEC=`pp4 streams | grep "Stream $DEPOT "`
+if [ "$STREAMSPEC" != "" ]; then
+	STREAMDEF="Stream:	$DEPOT"
+	echo "$DEPOT is a stream."
+else
+	STREAMDEF="# Not a stream"
+	echo "$DEPOT is not a stream."
+fi
+
+cat > .clientspec << END
+Client:	$CLIENT
+Owner:	$P4USER
+Host:	$HOST
+Description: Created by PP4 on behalf of $P4USER.
+Root:	$DIR
+Options:	noallwrite noclobber nocompress unlocked nomodtime normdir
+SubmitOptions:	submitunchanged
+LineEnd:	local
+$STREAMDEF
+View: $DEPOT/... //$CLIENT/...
+END
+
+cat .clientspec | pp4 client -i
+
+pp4 autoconfig
+
+#pp4 client -S $DEPOT $CLIENT

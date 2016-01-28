@@ -1,0 +1,13 @@
+#!/bin/bash
+
+FILE=/tmp/patch`date +%s`
+
+cat > $FILE
+
+cat $FILE | grep "+++" | cut -f1 | cut -d" " -f2 | while read F; do
+	pp4 open $F
+done
+
+patch -rlN -p1 < $FILE
+
+rm $FILE

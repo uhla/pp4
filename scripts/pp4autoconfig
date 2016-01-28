@@ -1,0 +1,13 @@
+#!/bin/bash
+
+DIR=`pwd`
+CLIENT=$(pp4 clients -u $P4USER | awk "{if (\"$DIR\" == \$5) print \$2}")
+
+cat  > .p4config << END
+P4IGNORE=.p4ignore
+P4CLIENT=$CLIENT
+P4USER=$P4USER
+P4EDITOR=nano
+END
+
+cat .p4config

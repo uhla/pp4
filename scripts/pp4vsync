@@ -1,0 +1,6 @@
+#!/bin/bash
+
+STREAM=`pp4 client -o | grep -e "^Stream:" | cut -f2`
+FILES=`pp4 fstat -T depotFile $STREAM/... | grep depotFile | wc -l`
+echo "Syncing stream $STREAM ($FILES files in total)"
+pp4 -I sync -q $@

@@ -1,0 +1,52 @@
+#!/bin/bash
+
+if [ "$1" = "" -o "$1" = "help" ]; then
+	echo "PP4 - set of sextension scripts for Perforce versioning system"
+	echo "Author: Dusan Jakub, Solarwinds"
+	echo ""
+	echo "Usage: pp4 can be used the same way as original p4 scripts, all arguments are passed through."
+	echo "As an advantage againts original p4, it respects the workspace settings defined in .p4config file in root of each workspace."
+	echo "The .p4config can be created and edited manually, but pp4 brings a set of extnsions that generate this file automatically"
+	echo ""
+	echo "Extensions:"
+	echo "pp4 clone //stream/stream"
+	echo "    Creates a new workspace in the current directory and maps it to the stream specified. No files are synced at this point."
+	echo "    If the workspace already exists (on the same host, user and path), it is modified"
+	echo "pp4 sync [revision]"
+	echo "    Syncs the specified revision, with a pretty progress indicator"
+	echo "pp4 autoconfig"
+	echo "    Creates the .p4config file in already existing workspace, to comply with pp4."
+	echo "pp4 label2stream"
+	echo "    Utility to determine what stream(s) was the label made on."
+	echo "pp4 diff [changelist]"
+	echo "    Creates an unified diff file from the changelist. Automatically determines what kind of changelist it is:"
+	echo "    * Submitted changelist - diff is made against the previous revision of the files"
+	echo "    * Pending changelist in the current workspace - diff is made from open files in the changelist"
+	echo "    * Pending changelist in a different workspace - diff is made from shelved files"
+	echo "pp4 patch"
+	echo "    Apply a patch created by pp4 diff, read from standard input, to files in the current workspace. Check them out first."
+	echo "pp4v "
+	echo "    Open P4 visual client in the current workspace"
+	echo "-------------------------------------"
+	echo "Original Perforce help follows:"
+	p4 help
+	exit
+fi
+
+EXT=""
+case $1 in
+	clone) EXT="pp4clone";;
+	vsync) EXT="pp4vsync";;
+	autoconfig) EXT="pp4autoconfig";;
+	label2stream) EXT="pp4label2stream";;
+	diff) EXT="pp4diff";;
+	patch) EXT="pp4patch";;
+	v) EXT="pp4v";;
+esac
+
+if [ "$EXT" = "" ]; then
+	P4CONFIG=".p4config" p4 "$@"
+else
+	shift
+	$(dirname $0)/scripts/$EXT "$@"
+fi
