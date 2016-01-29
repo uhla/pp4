@@ -47,6 +47,7 @@ esac
 if [ "$EXT" = "" ]; then
 	P4CONFIG=".p4config" p4 "$@"
 else
+	. $(dirname $0)/scripts/pp4_utils
 	shift
-	$(dirname $0)/scripts/$EXT "$@"
+	. $(dirname $0)/scripts/$EXT "$@"
 fi
