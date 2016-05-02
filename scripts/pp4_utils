@@ -1,5 +1,14 @@
 #!/bin/bash
 
+function check_login() {
+	pp4 login -s > /dev/null  # Only redirecting stdout. If there is an error, stderr is printed
+	STATUS=$?
+	if [ $STATUS != 0 ]; then
+		echo "You are not logged in. Please do 'pp4 login' or 'p4 login' first." 1>&2
+		exit 1
+	fi
+}
+
 function stream_from_workspace() {
 	CLIENT="$1"
 	pp4 client -o $CLIENT | grep -e "^Stream:" | cut -f2

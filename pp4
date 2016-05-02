@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "$1" = "" -o "$1" = "help" ]; then
+if [ "$1" = "" -o \( "$1" = "help" -a "$2" = "" \) ]; then
 	echo "PP4 - set of sextension scripts for Perforce versioning system"
 	echo "Author: Dusan Jakub, Solarwinds"
 	echo ""
@@ -42,12 +42,14 @@ case $1 in
 	diff) EXT="pp4diff";;
 	patch) EXT="pp4patch";;
 	v) EXT="pp4v";;
+	reset) EXT="pp4reset"
 esac
 
 if [ "$EXT" = "" ]; then
 	P4CONFIG=".p4config" p4 "$@"
 else
 	. $(dirname $0)/scripts/pp4_utils
+	check_login
 	shift
 	. $(dirname $0)/scripts/$EXT "$@"
 fi
