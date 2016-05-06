@@ -1,7 +1,18 @@
 #!/bin/bash
 
 DIR=`pwd`
-CLIENT=$(pp4 clients -u $P4USER | awk "{if (\"$DIR\" == \$5) print \$2}")
+OPTIND=1         # Reset in case getopts has been used previously in the shell.
+
+while getopts "c:" opt; do
+    case "$opt" in
+    c)  CLIENT=$OPTARG
+        ;;
+    esac
+done
+
+if [ "$CLIENT" = "" ]; then
+	CLIENT=$(pp4 clients -u $P4USER | awk "{if (\"$DIR\" == \$5) print \$2}")
+fi
 
 cat  > .p4config << END
 P4IGNORE=.p4ignore

@@ -50,6 +50,6 @@ END
 
 cat .clientspec | pp4 client -i
 
-pp4 autoconfig
+pp4 autoconfig -c $CLIENT
 
 #pp4 client -S $DEPOT $CLIENT
