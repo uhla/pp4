@@ -17,14 +17,35 @@ _pp4_labels()
 	cur="${COMP_WORDS[COMP_CWORD]}"
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-	
-	if [[ ${cur} == @* ]] ; then
-		opts=$(. pp4 labels | cut -d" " -f2 | sed -s 's/^/@/')
-		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+	opts=$(. pp4 labels | cut -d" " -f2 | sed -s 's/^/@/')
+	COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+	return 0
+}
+
+_pp4_entry_point() {
+	local cur prev opts pp4opts p4opts
+	COMPREPLY=()
+	prev="${COMP_WORDS[COMP_CWORD-1]}"
+	cur="${COMP_WORDS[COMP_CWORD]}"
+
+	if [[ $prev == "pp4" ]]; then
+		pp4opts="clone autoconfig label2stream diff patch v reset codedrop"
+		p4opts="help info clean client clients flush have ignores sync update where workspace workspaces add attribute copy delete diff diff2 dirs edit files fstat grep move lock print reconcile rename revert status sizes unlock change changelist changes changelists describe filelog opened reopen review shelve submit unshelve fix fixes job jobs jobspec branch branches copy cstat integrate integrated interchanges istat label labels labelsync list merge populate tag resolve resolved stream streams admin archive cachepurge configure counter counters dbschema dbstat depot depots diskspace journals key keys license lockstat logappend logger logparse logrotate logschema logstat logtail monitor obliterate ping property proxy pull reload renameuser replicate restore reviews server serverid servers triggers typemap unload verify group groups login logout passwd protect protects tickets trust user users set"
+		COMPREPLY=( $(compgen -W "${pp4opts} ${p4opts}" -- ${cur}) )
 		return 0
+
+	elif [[ $prev == "clone" ]]; then
+		_pp4_streams
+
+	elif [[ $prev == "sync" ]]; then
+		_pp4_labels
+
+	elif [[ $prev == "label2stream" ]]; then
+		_pp4_labels
 	fi
 }
 
-complete -F _pp4_streams pp4clone
-complete -F _pp4_labels pp4sync
-complete -F _pp4_labels pp4label2stream
+complete -F _pp4_entry_point pp4
+
+
+
