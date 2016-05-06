@@ -42,7 +42,8 @@ case $1 in
 	diff) EXT="pp4diff";;
 	patch) EXT="pp4patch";;
 	v) EXT="pp4v";;
-	reset) EXT="pp4reset"
+	reset) EXT="pp4reset" ;;
+	codedrop) EXT="pp4codedrop" ;;
 esac
 
 if [ "$EXT" = "" ]; then

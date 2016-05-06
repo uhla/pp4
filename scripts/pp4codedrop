@@ -1,0 +1,36 @@
+#!/bin/bash
+
+URL="http://dev-ncentral-codedrop.swdev.local"
+
+CHANGELIST1=$1
+
+STREAM=`stream_from_changelist $CHANGELIST1`
+STREAM_END=`echo $STREAM | sed "s|//[^/]*/\(.*\)|\\1|"`
+STREAM_URL=`echo $STREAM_END | tr . _`
+
+MESSAGE=`pp4 describe $CHANGELIST1 | head -n3 | tail -n1 | xargs`
+CODE=(${MESSAGE//:/ })
+
+RELEASE_INFO=`curl $URL/release/$STREAM_URL | $(dirname $0)/lib/JSON.sh -l`
+
+
+cat > codedrop.json <<EOF468976464
+{
+  "userName":"$P4USER",
+  "name":"$CODE",
+  "summary":"$MESSAGE",
+  "description":"",
+  "changelists":"$CHANGELIST1",
+  "stream":"$STREAM_END",
+  "revisionType":`echo "$RELEASE_INFO" | egrep '\["revisionType"\]' | cut -f2`,
+  "revision":`echo "$RELEASE_INFO" | egrep '\["revision"\]' | cut -f2`,
+  "version":`echo "$RELEASE_INFO" | egrep '\["version"\]' | cut -f2`,
+  "jdk":`echo "$RELEASE_INFO" | egrep '\["jdk"\]' | cut -f2`
+}
+EOF468976464
+
+cat codedrop.json
+
+curl -H "Content-Type: application/json" --cookie "user=$P4USER" -d @codedrop.json $URL/code-drop
+
+
