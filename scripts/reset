@@ -1,0 +1,11 @@
+#!/bin/bash
+
+CL=$1
+
+pp4 describe -s -S $CL \
+	| awk 'p; /Shelved files .../ {p=1};' \
+	| grep "edit" | sed -e 's/#.*//'  \
+	| sed -e 's/^... //' \
+	| while read F; do
+	pp4 open -c $CL $F
+done

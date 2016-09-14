@@ -1,0 +1,6 @@
+#!/bin/bash
+
+LABEL=@b$(tr . _ <<< $1)
+
+#echo $LABEL
+pp4 label2stream $LABEL

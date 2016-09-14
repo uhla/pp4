@@ -33,24 +33,25 @@ if [ "$1" = "" -o \( "$1" = "help" -a "$2" = "" \) ]; then
 	exit
 fi
 
-EXT=""
-case $1 in
-	clone) EXT="pp4clone";;
-	vsync) EXT="pp4vsync";;
-	autoconfig) EXT="pp4autoconfig";;
-	label2stream) EXT="pp4label2stream";;
-	diff) EXT="pp4diff";;
-	patch) EXT="pp4patch";;
-	v) EXT="pp4v";;
-	reset) EXT="pp4reset" ;;
-	codedrop) EXT="pp4codedrop" ;;
-esac
+DIR=$(dirname $0)
+CMD=$1
 
-if [ "$EXT" = "" ]; then
+if [ "$CMD" == "p4" ]; then
+	shift
 	P4CONFIG=".p4config" p4 "$@"
-else
-	. $(dirname $0)/scripts/pp4_utils
+elif [ -f "$DIR/scripts/$CMD" ]; then	
+	#. $DIR/pp4_utils
+	#check_login
+	shift
+	"$DIR/scripts/$CMD" "$@"
+elif [ -f "$DIR/ext/$CMD" ]; then
+	. $DIR/pp4_utils
 	check_login
 	shift
-	. $(dirname $0)/scripts/$EXT "$@"
+	. $DIR/ext/$CMD "$@"
+else
+	P4CONFIG=".p4config" p4 "$@"
 fi
+
+# Fix bach prompt
+cd .

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+CL=$1
+
+pp4 opened -c $CL

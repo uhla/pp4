@@ -20,8 +20,8 @@ function workspace_from_changelist() {
 }
 
 function stream_from_changelist() {
-	WS=`workspace_from_changelist $1`
-	stream_from_workspace $WS
+	CL=$1
+	pp4 describe -S -s $CL | awk 'p; /Affected files .../ {p=1}; /Shelved files .../ {p=1};' | sed "s/^... \(\/\/[^\/]*\/[^\/]*\).*$/\1/" | grep "/" | uniq
 }
 
 function get_current_workspace() {

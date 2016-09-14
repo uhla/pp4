@@ -13,26 +13,32 @@ if [ "$P4USER" = "" ]; then
 fi
 
 DEPOT=$1
+
+SUBDIR=${DEPOT/\/\//}
+echo $SUBDIR
+mkdir -p "$SUBDIR/Workspace"
+cd "$SUBDIR/Workspace"
+
 DEPOTX=${DEPOT//\//-}
 DIR=`pwd`
-DIRX=${DIR//\//-}
+DIRX=${DIR//[\/#@]/-}
 HOST=`hostname`
 
 CLIENT="${P4USER}_${HOST}_${DEPOTX}_${DIRX}"
 
 P4EDITOR=nano
 
-echo Creating client $CLIENT
+echo INFO: Creating client $CLIENT
 
 
 # Try to search for the depot path in P4 streams
 STREAMSPEC=`pp4 streams | grep "Stream $DEPOT "`
 if [ "$STREAMSPEC" != "" ]; then
 	STREAMDEF="Stream:	$DEPOT"
-	echo "$DEPOT is a stream."
+	echo "INFO: $DEPOT is a stream."
 else
 	STREAMDEF="# Not a stream"
-	echo "$DEPOT is not a stream."
+	echo "INFO: $DEPOT is not a stream."
 fi
 
 cat > .clientspec << END

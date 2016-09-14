@@ -5,6 +5,13 @@ URL="http://dev-ncentral-codedrop.swdev.local"
 CHANGELIST1=$1
 
 STREAM=`stream_from_changelist $CHANGELIST1`
+echo "Stream: $STREAM"
+
+if [ "$STREAM" == "" ]; then
+	echo "Cannot determine which stream to use. Did you shelve?"
+	exit 1
+fi
+
 STREAM_END=`echo $STREAM | sed "s|//[^/]*/\(.*\)|\\1|"`
 STREAM_URL=`echo $STREAM_END | tr . _`
 

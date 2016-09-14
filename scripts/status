@@ -1,0 +1,4 @@
+#!/bin/bash
+
+pp4 p4 status | sed -e 's/\(.*\) - \([^//]*\).*$/\2: \1/' | sort
+
