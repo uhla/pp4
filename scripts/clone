@@ -59,6 +59,13 @@ else
 	echo "INFO: $DEPOT may or may not be a stream, but are not registering it as such, because view is overriden."
 fi
 
+# Some character must be escaped for P4
+
+DIR=${DIR//%/%25}
+DIR=${DIR//@/%40}
+DIR=${DIR//#/%23}
+DIR=${DIR//\*/%2A}
+
 cat > .clientspec << END
 Client:	$CLIENT
 Owner:	$P4USER
@@ -71,6 +78,8 @@ LineEnd:	local
 $STREAMDEF
 View:
 END
+
+cat .clientspec
 
 if [[ "$1" == "" ]]; then
 	echo -e "\t$DEPOT/... //$CLIENT/..." >> .clientspec
