@@ -2,7 +2,7 @@
 #P4CONFIG=".p4config" p4 "$@"
 
 if [ "$1" = "" ]; then	
-	echo "Usage: $0 DEPOTPATH"
+	echo "Usage: $0 [SUBDIR] DEPOTPATH [FILTER_DIR1 [FILTER_DIR2 [...]]]"
 	echo "The command creates a new p4 workspace from the path specified to the current working directory"
 	exit 1
 fi
@@ -12,12 +12,24 @@ if [ "$P4USER" = "" ]; then
 	exit 1
 fi
 
-DEPOT=$1
+# First argument may optionally denote the client subdirectory to which we should map the workspace
+# We can determine if it is depot path by its beginning: If is starts with double slash, it is a depot path, otherwise it is a local subdir
+if [[ "$1" =~ ^\/\/.* ]]; then
+	DEPOT=$1
+	SUBDIR="${DEPOT/\/\//}/Workspace"
+	shift
+else
+	SUBDIR=$1
+	DEPOT=$2
+	shift
+	shift
+fi 
 
-SUBDIR=${DEPOT/\/\//}
-echo $SUBDIR
-mkdir -p "$SUBDIR/Workspace"
-cd "$SUBDIR/Workspace"
+echo "SUBDIR=$SUBDIR"
+echo "DEPOT=$DEPOT"
+
+mkdir -p "$SUBDIR"
+cd "$SUBDIR"
 
 DEPOTX=${DEPOT//\//-}
 DIR=`pwd`
@@ -31,14 +43,20 @@ P4EDITOR=nano
 echo INFO: Creating client $CLIENT
 
 
-# Try to search for the depot path in P4 streams
-STREAMSPEC=`pp4 streams | grep "Stream $DEPOT "`
-if [ "$STREAMSPEC" != "" ]; then
-	STREAMDEF="Stream:	$DEPOT"
-	echo "INFO: $DEPOT is a stream."
+
+if [[ "$1" == "" ]]; then
+	# Try to search for the depot path in P4 streams
+	STREAMSPEC=`pp4 streams | grep "Stream $DEPOT "`
+	if [ "$STREAMSPEC" != "" ]; then
+		STREAMDEF="Stream:	$DEPOT"
+		echo "INFO: $DEPOT is a stream."
+	else
+		STREAMDEF="# Not a stream"
+		echo "INFO: $DEPOT is not a stream."
+	fi
 else
-	STREAMDEF="# Not a stream"
-	echo "INFO: $DEPOT is not a stream."
+	STREAMDEF="# Stream not applicable"
+	echo "INFO: $DEPOT may or may not be a stream, but are not registering it as such, because view is overriden."
 fi
 
 cat > .clientspec << END
@@ -51,8 +69,18 @@ Options:	noallwrite noclobber nocompress unlocked nomodtime normdir
 SubmitOptions:	submitunchanged
 LineEnd:	local
 $STREAMDEF
-View: $DEPOT/... //$CLIENT/...
+View:
 END
+
+if [[ "$1" == "" ]]; then
+	echo -e "\t$DEPOT/... //$CLIENT/..." >> .clientspec
+fi
+
+while [[ "$1" != "" ]]; do
+	echo -e "\t$DEPOT/$1/... //$CLIENT/$1/..." >> .clientspec
+	shift
+done
+		
 
 cat .clientspec | pp4 client -i
 
