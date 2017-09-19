@@ -7,9 +7,29 @@ PWD=`pwd`
 
 PENDING=`pp4 describe -s $CL | head -n1 | grep pending`
 
+echo "### CHANGE START ###"
+pp4 changelist -o $CL \
+	| grep -v -e "^Change:"\
+	| grep -v -e "^Date:"\
+	| grep -v -e "^Client:"\
+	| grep -v -e "^User:"\
+	| grep -v -e "^Status:" \
+	| grep -v -e "^$" \
+	| grep -v -e "^#" \
+	
+echo "### CHANGE END ###"
+
 if [ "$PENDING" = "" ]; then
 	# Submitted changlist -> create patch against previous revision
 	pp4 diff2 -u "$DP/...@$((CL-1))" "$DP/...@$CL" | sed "s|$DP|.|"
+	echo "## Added files"
+	for NEWFILE in `pp4 diff2 -Od -q "$DP/...@$((CL-1))" "$DP/...@$CL" | grep "==== <none> - " | sed "s|==== <none> - \([^#]\+#[0-9]\+\) ====|\1|"`; do
+		RAWFILE=${NEWFILE/$DP/.}
+		RAWFILE=`echo $RAWFILE | sed "s|\([^#]\+\)#.*|\1|"`
+		pp4 print $NEWFILE | tail -n+2 | diff -u /dev/null - | sed "s|+++ -|+++ $RAWFILE|"
+	done
+
+# | sed "s|$DP|.|" 
 else
 	# Pending changlist -> is it in curent workspace?
 	CURRENT_CLIENT=`get_current_workspace`

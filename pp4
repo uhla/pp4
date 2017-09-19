@@ -40,10 +40,10 @@ if [ "$CMD" == "p4" ]; then
 	shift
 	P4CONFIG=".p4config" p4 "$@"
 elif [ -f "$DIR/scripts/$CMD" ]; then	
-	#. $DIR/pp4_utils
-	#check_login
+	. $DIR/pp4_utils
+	check_login
 	shift
-	"$DIR/scripts/$CMD" "$@"
+	. "$DIR/scripts/$CMD" "$@"
 elif [ -f "$DIR/ext/$CMD" ]; then
 	. $DIR/pp4_utils
 	check_login

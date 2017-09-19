@@ -4,10 +4,46 @@ FILE=/tmp/patch`date +%s`
 
 cat > $FILE
 
-cat $FILE | grep "+++" | cut -f1 | cut -d" " -f2 | while read F; do
-	pp4 open $F
-done
 
-patch -rlN -p1 < $FILE
+if [ "$1" != "nocheckout" ]; then
+	CHANGE=`{
+		sed -n "/### CHANGE START ###/,/### CHANGE END ###/p" $FILE
+		echo "Change: new"
+	} | pp4 change -i`
+	CHANGE=($CHANGE)
+
+	if [  "${CHANGE[0]}" != "Change"  -o  "${CHANGE[2]}" != "created."  ]; then
+		echo "${CHANGE[@]}"
+		exit 1
+	fi
+	
+	CHANGE=${CHANGE[1]}
+	echo $CHANGE
+
+	cat $FILE | grep "+++" | cut -f1 | cut -d" " -f2 | while read F; do
+		pp4 edit -c $CHANGE $F
+	done
+fi
+
+echo
+echo "-----------------------------------"
+echo 
+
+if [ "$1" != "checkoutonly" ]; then
+	patch -r -l -N -p1 --merge < $FILE
+else
+	echo "No real patching, just checkout"
+fi
+
+echo
+echo "-----------------------------------"
+echo 
+
+
+if [ "$1" != "nocheckout" ]; then
+	cat $FILE | grep "+++" | cut -f1 | cut -d" " -f2 | while read F; do
+		pp4 add -c $CHANGE $F
+	done
+fi
 
 rm $FILE
