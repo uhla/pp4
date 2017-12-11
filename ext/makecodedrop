@@ -1,0 +1,137 @@
+#!/bin/bash
+
+URL="http://dev-ncentral-codedrop.swdev.local"
+
+CHANGELIST1=$1
+SUPPORTED_VERSION=$2
+
+TEMP_FILE=/tmp/patch`date +%s`
+
+WORKSPACE=`get_current_workspace`
+echo "Workspace: $WORKSPACE"
+STREAM=`stream_from_workspace $WORKSPACE`
+echo "Stream: $STREAM"
+
+if [ "$STREAM" == "" ]; then
+	echo "Cannot determine which stream to use. Did you shelve?"
+	exit 1
+fi
+
+STREAM_END=`echo $STREAM | sed "s|//[^/]*/\(.*\)|\\1|"`
+STREAM_URL=`echo $STREAM_END | tr . _`
+
+MESSAGE=`pp4 describe $CHANGELIST1 | head -n3 | tail -n1`
+MESSAGE=`echo $MESSAGE`   # remove multiple whitespaces
+CODE=(${MESSAGE//:/ })
+
+#mvn clean install
+
+ROOT_DIR=$(pwd)
+
+rm -r $ROOT_DIR/$CODE
+mkdir -p $ROOT_DIR/$CODE/$CODE
+cd $ROOT_DIR/$CODE/$CODE
+
+pp4 diff $CHANGELIST1 > changes.patch
+pp4 labels $STREAM/* | cut -f2 -d" " | tr _ . | cut -c2- > supportedversions.txt    # TODO
+pp4 describe $CHANGELIST1  > details.txt 
+echo $MESSAGE > description.txt
+echo $P4USER > author.txt
+
+cd $ROOT_DIR
+
+function find_pom() {
+	path="$1"
+	shift 1
+	while [[ $path != / ]]; do
+		if [[ -f $path/pom.xml ]]; then
+			echo $path/pom.xml
+			return
+		fi		
+		path="$(readlink -f "$path"/..)"
+	done
+}
+
+mkdir -p $ROOT_DIR/tmp
+echo "" > $ROOT_DIR/tmp/paths.txt
+find . -not -path "./tmp/*" -name pom.xml | while read POM; do
+	echo $POM
+	DIR=$ROOT_DIR/tmp/$(dirname $POM)
+	mkdir -p $DIR
+	if [ ! -f "$DIR/pom.xml.nons" -o "$POM" -nt "$DIR/pom.xml.nons" ]; then
+		mvn -q help:effective-pom -f $POM -Doutput=$DIR/pom.xml
+		sed -e 's/ xmlns.*=".*"//g' $DIR/pom.xml > $DIR/pom.xml.nons
+	fi
+
+	SOURCE_DIR=$(xmlstarlet sel -t -v 'project/build/sourceDirectory'  $DIR/pom.xml.nons)
+	TARGET_DIR=$(xmlstarlet sel -t -v 'project/build/outputDirectory'  $DIR/pom.xml.nons)
+	[ "x" != "x$SOURCE_DIR" ] && SOURCE_DIR=$(realpath $SOURCE_DIR)
+	[ "x" != "x$SOURCE_DIR" -a "x" != "x$TARGET_DIR" ] && echo "$SOURCE_DIR $TARGET_DIR" >> $ROOT_DIR/tmp/paths.txt
+	
+	RESOURCE_DIR=$(xmlstarlet sel -t -v 'project/build/plugins/plugin/configuration/warSourceDirectory'  $DIR/pom.xml.nons)
+	[ "x" != "x$RESOURCE_DIR" ] && RESOURCE_DIR=$(realpath $RESOURCE_DIR)
+	[ "x" != "x$RESOURCE_DIR" ] && echo "$RESOURCE_DIR $RESOURCE_DIR" >> $ROOT_DIR/tmp/paths.txt
+done
+sort -r $ROOT_DIR/tmp/paths.txt > $ROOT_DIR/tmp/paths.txt.sorted
+cat $ROOT_DIR/tmp/paths.txt.sorted
+
+cat $CODE/$CODE/changes.patch | grep -e "---" | cut -f1 | cut -d" " -f2 | while read FILE; do
+	DIR=$(dirname "${FILE}")
+	BASENAME=$(basename "${FILE}")
+	FILENAME=$(echo $BASENAME | cut -f 1 -d '.')
+	EXT=$(echo $BASENAME | cut -f 2 -d '.')
+
+	if [ -f $FILE ]; then
+		POM=`find_pom $DIR`
+		POM_DIR=`dirname $POM`
+
+		FILE=$(realpath $FILE)
+		FILE_DIR=$(dirname $FILE)
+		if [ $EXT == 'java' ]; then
+
+			cat $ROOT_DIR/tmp/paths.txt.sorted | while read SOURCE_DIR TARGET_DIR; do
+				echo "Test $FILE_DIR against $SOURCE_DIR"
+				if [[ "$FILE_DIR" == "$SOURCE_DIR"* ]]; then
+					echo "!!!!!!!!!!!!!!!!1 cPass"
+					TARGET=$FILE
+					TARGET_RELATIVE=(${TARGET/$SOURCE_DIR/})
+					TARGET=(${TARGET/$SOURCE_DIR/$TARGET_DIR})
+					TARGET=(${TARGET/.java/})
+
+					echo $TARGET, $TARGET_RELATIVE
+
+					for FILE in $TARGET.class $TARGET\$*.class; do
+						echo $FILE
+						if [ -f $FILE ]; then
+							FILE_RELATIVE=(${FILE/$TARGET_DIR/})
+							mkdir -p `dirname $CODE/WEB-INF/classes/$TARGET_RELATIVE`
+							cp $TARGET_DIR/$FILE_RELATIVE $CODE/WEB-INF/classes/$FILE_RELATIVE
+						fi
+					done
+					break
+				fi
+			done
+		else
+			cat $ROOT_DIR/tmp/paths.txt.sorted | while read SOURCE_DIR TARGET_DIR; do
+				echo "Test $FILE_DIR against $SOURCE_DIR"
+				if [[ "x$SOURCE_DIR" != "x" && "$FILE_DIR" == "$SOURCE_DIR"* ]]; then
+					echo "!!!!!!!!!!!!!!!!1 cPass"
+					TARGET=`realpath $FILE`
+					TARGET_RELATIVE=(${TARGET/$SOURCE_DIR/})
+					TARGET=(${TARGET/$SOURCE_DIR/$TARGET_DIR})
+
+					if [ -f $FILE ]; then
+						FILE_RELATIVE=(${FILE/$TARGET_DIR/})
+						mkdir -p `dirname $CODE/$TARGET_RELATIVE`
+						cp $TARGET_DIR/$FILE_RELATIVE $CODE/$FILE_RELATIVE
+					fi
+					break
+				fi
+			done
+		fi
+	fi
+done
+
+cd $CODE
+zip -r $CODE.zip *
+cd ..
