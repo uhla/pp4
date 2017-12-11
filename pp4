@@ -35,6 +35,7 @@ fi
 
 DIR=$(dirname $0)
 CMD=$1
+DIRECTORY=`pwd`
 
 if [ "$CMD" == "p4" ]; then
 	shift
@@ -49,9 +50,21 @@ elif [ -f "$DIR/ext/$CMD" ]; then
 	check_login
 	shift
 	. $DIR/ext/$CMD "$@"
+elif [ -f "$DIR/scripts/$CMD.py" ]; then	
+	. $DIR/pp4_utils
+	check_login
+	shift
+	python3 "$DIR/scripts/$CMD.py" "$@"
+elif [ -f "$DIR/ext/$CMD.py" ]; then
+	. $DIR/pp4_utils
+	check_login
+	shift
+	python3 $DIR/ext/$CMD.py "$@"
 else
 	P4CONFIG=".p4config" p4 "$@"
 fi
 
 # Fix bach prompt
-cd .
+cd $DIRECTORY
+cd ..
+cd $DIRECTORY

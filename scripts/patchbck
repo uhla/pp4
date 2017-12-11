@@ -21,7 +21,7 @@ if [ "$1" != "nocheckout" ]; then
 	echo $CHANGE
 
 	cat $FILE | grep "+++" | cut -f1 | cut -d" " -f2 | while read F; do
-		pp4 edit -c $CHANGE $F
+		pp4 edit -c $CHANGE "$F"
 	done
 fi
 
@@ -42,7 +42,7 @@ echo
 
 if [ "$1" != "nocheckout" ]; then
 	cat $FILE | grep "+++" | cut -f1 | cut -d" " -f2 | while read F; do
-		pp4 add -c $CHANGE $F
+		pp4 add -c $CHANGE "$F"
 	done
 fi
 
