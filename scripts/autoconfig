@@ -15,6 +15,7 @@ if [ "$CLIENT" = "" ]; then
 fi
 
 cat  > .p4config << END
+P4PORT=$P4PORT
 P4IGNORE=.p4ignore
 P4CLIENT=$CLIENT
 P4USER=$P4USER
