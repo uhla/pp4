@@ -54,12 +54,12 @@ elif [ -f "$DIR/scripts/$CMD.py" ]; then
 	. $DIR/pp4_utils
 	check_login
 	shift
-	python3 "$DIR/scripts/$CMD.py" "$@"
+	PYTHONPATH=$PYTHONPATH:$DIR python3 "$DIR/scripts/$CMD.py" "$@"
 elif [ -f "$DIR/ext/$CMD.py" ]; then
 	. $DIR/pp4_utils
 	check_login
 	shift
-	python3 $DIR/ext/$CMD.py "$@"
+	PYTHONPATH=$PYTHONPATH:$DIR python3 $DIR/ext/$CMD.py "$@"
 else
 	P4CONFIG=".p4config" p4 "$@"
 fi
