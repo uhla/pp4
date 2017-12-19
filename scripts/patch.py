@@ -19,9 +19,13 @@ def pp4_patch(patch, checkout=True, checkoutonly=False, postaction=None):
                 start = i
             if re.match("#+ +CHANGE END +#+", line):
                 end = i
-            if last_line.startswith("---") and line.startswith("+++"):
-                file1 = re.search('\-\-\-\s+([^\t]+)', last_line).group(1)
-                file2 = re.search('\+\+\+\s+([^\t]+)', line).group(1)
+            if last_line.startswith("--") and line.startswith("++"):
+                file1 = re.search('\-{2,}\s+(\S+)', last_line).group(1)
+                file2 = re.search('\+{2,}\s+(\S+)', line).group(1)
+                changed_files.append((file1, file2))
+            if last_line.startswith("++") and line.startswith("--"):
+                file1 = re.search('\-{2,}\s+(\S+)', line).group(1)
+                file2 = re.search('\+{2,}\s+(\S+)', last_line).group(1)
                 changed_files.append((file1, file2))
             last_line = line
 
