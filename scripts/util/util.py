@@ -29,7 +29,7 @@ class Changelist:
 
 
 def pp4_describe_changelist(changelist):
-    process = subprocess.run(["pp4", "describe", "-s", str(changelist)], stdout=subprocess.PIPE,
+    process = subprocess.run(["pp4", "describe", "-S", "-s", str(changelist)], stdout=subprocess.PIPE,
                              universal_newlines=True, check=True)
 
     return parse_describe_changelist(process.stdout)
@@ -81,7 +81,7 @@ def parse_describe_changelist(text):
             streams.add(stream_path)
 
     if changelist.shelved_files:
-        for f in changelist.affected_files:
+        for f in changelist.shelved_files:
             path = f[0].split("/")
             stream_path = "/".join(path[:4])
             streams.add(stream_path)
