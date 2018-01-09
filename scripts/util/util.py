@@ -1,8 +1,35 @@
 import re
 import subprocess
+from io import StringIO
 
 from scripts.util import parser
 from scripts.util.parser import skip_blank_lines, read_tabbed, read_until_blank, parse_files
+import sys
+
+class PP4Exception(Exception):
+    def __init__(self, message, command="pp4"):
+        self.message = message
+        self.command = command
+
+    def __str__(self):
+        return "Command {} caused an error {}".format(self.command, self.message)
+
+class Capturing(list):
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio  # free up some memory
+        sys.stdout = self._stdout
+
+    @staticmethod
+    def capture(func):
+        with Capturing() as out:
+            func()
+            return out
 
 
 class Changelist:
@@ -29,10 +56,20 @@ class Changelist:
 
 
 def pp4_describe_changelist(changelist):
+    process = subprocess.run(["pp4", "describe", "-s", str(changelist)], stdout=subprocess.PIPE,
+                             universal_newlines=True, check=True)
+
+    affected_changelist = parse_describe_changelist(process.stdout)
+
     process = subprocess.run(["pp4", "describe", "-S", "-s", str(changelist)], stdout=subprocess.PIPE,
                              universal_newlines=True, check=True)
 
-    return parse_describe_changelist(process.stdout)
+    shelved_changelist = parse_describe_changelist(process.stdout)
+
+    affected_changelist.shelved_files += shelved_changelist.shelved_files
+    affected_changelist.stream += shelved_changelist.stream
+
+    return affected_changelist
 
 
 def parse_describe_changelist(text):
@@ -46,12 +83,13 @@ def parse_describe_changelist(text):
         "Change (?P<number>[0-9]+) by (?P<user>[^@]+)@(?P<workspace>[^ ]+) on (?P<datestr>[0-9/]+ [0-9:]+) *(?P<pending>\*pending\*)?",
         first)
     if not m:
+        print(output)
         raise Exception("Unable to parse line " + first)
 
     changelist = Changelist(**m.groupdict())
 
     output = skip_blank_lines(output)
-    #print("\n".join(output))
+    # print("\n".join(output))
     description, output = read_tabbed(output)
     changelist.description = "\n".join(description)
 
@@ -70,8 +108,6 @@ def parse_describe_changelist(text):
             output = skip_blank_lines(output)
             changelist.differences = output
             output = []
-
-
 
     streams = set()
     if changelist.affected_files:
@@ -116,3 +152,22 @@ def stream_from_workspace(client):
 
 def get_current_workspace():
     return pp4_describe_client()["Client"]
+
+
+def pp4_delete(changelist, file):
+    process = subprocess.run(['pp4', 'delete', '-c', str(changelist), file], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                   universal_newlines=True, check=True)
+
+    error = process.stdout
+
+    if "can't delete (already opened for add)" in error:
+        print(error)
+        print("-> reverting and deleting on file system")
+        subprocess.run(['pp4', 'revert', file], stdout=subprocess.PIPE,
+                       universal_newlines=True, check=True)
+        subprocess.run(['rm', "-f", file], stdout=subprocess.PIPE,
+                       universal_newlines=True, check=True)
+    elif "file(s) not on client" in error:
+        print(error)  # Not an error
+    elif error and "opened for delete" not in error:
+        raise PP4Exception(error)

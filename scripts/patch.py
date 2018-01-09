@@ -5,9 +5,11 @@ import argparse
 import subprocess
 import re
 
-def pp4_patch(patch, checkout=True, checkoutonly=False, postaction=None):
+from scripts.util.util import pp4_describe_changelist, pp4_delete
+
+
+def pp4_patch(patch, checkout=True, checkoutonly=False, changelist=None, postaction=None, move_from_changelist=None):
     changed_files = []
-    changelist = -1
     patch_result = 0
 
     if checkout:
@@ -32,18 +34,37 @@ def pp4_patch(patch, checkout=True, checkoutonly=False, postaction=None):
         change = patch[start+1:end]
         change.append("Change: new")
 
+#        print(change)
         print("\n".join(change))
 
-        process = subprocess.run('pp4 change -i'.split(), stdout=subprocess.PIPE, input="".join(change),
-                                 universal_newlines=True, check=True)
-        output = process.stdout.split("\n")
+        if not changelist:
+            process = subprocess.run('pp4 change -i'.split(), stdout=subprocess.PIPE, input="".join(change),
+                                     universal_newlines=True, check=True)
+            output = process.stdout.split("\n")
 
-        m = re.search('Change ([0-9]+) created', output[0])
-        if not m:
-            print("PP4 error: " + output[0])
+            m = re.search('Change ([0-9]+) created', output[0])
+            if not m:
+                print("PP4 error: " + output[0])
+                raise Exception()
 
-        changelist = int(m.group(1))
-        print("Pending changelist created: " + str(changelist))
+            changelist = int(m.group(1))
+            print("Pending changelist created: " + str(changelist))
+        else:
+            # TODO: Add description to existing change
+            pass
+
+        if move_from_changelist:
+            old_changelist = pp4_describe_changelist(move_from_changelist)
+            #print(old_changelist)
+            subprocess.run(['pp4', 'shelve', '-c', str(move_from_changelist)], stdout=subprocess.PIPE,
+                           universal_newlines=True, check=True)
+
+            print ("Moving files to new changelist:")
+            files = [f[0] for f in old_changelist.affected_files]
+
+            process = subprocess.run(['pp4', 'reopen', '-c', str(changelist)] + files, stdout=subprocess.PIPE,
+                           universal_newlines=True, check=True)
+            print(process.stdout)
 
         for file_from, file_to in changed_files:
             # File changed (or moved):
@@ -51,7 +72,6 @@ def pp4_patch(patch, checkout=True, checkoutonly=False, postaction=None):
                 subprocess.run(['pp4', 'edit', '-c', str(changelist), file_from], stdout=subprocess.PIPE,
                                universal_newlines=True, check=True)
             # TODO: Move
-            # TODO: Delete
 
     if not checkoutonly:
         process = subprocess.run(["patch", "-r", "-l", "-N", "-p1", "--merge"],
@@ -59,26 +79,31 @@ def pp4_patch(patch, checkout=True, checkoutonly=False, postaction=None):
         patch_result = process.returncode
         print(process.stdout)
 
-
     if checkout:
         for file_from, file_to in changed_files:
             # File added
             if file_from == "/dev/null" and file_to != "/dev/null":
                 subprocess.run(['pp4', 'add', '-c', str(changelist), file_to], stdout=subprocess.PIPE,
                                universal_newlines=True, check=True)
+            # File deleted
+            elif file_from != "/dev/null" and file_to == "/dev/null":
+                pp4_delete(changelist, file_from)
 
     if patch_result != 0:
         print("There were patch errors or warnings. Please review and fix the code and submit/shelve manually",
               file=sys.stderr)
-        return patch_result
+        return changelist, patch_result
 
     if postaction == "shelve":
-        subprocess.run(['pp4', 'shelve', '-c', str(changelist)], stdout=subprocess.PIPE,
+        process = subprocess.run(['pp4', 'shelve', '-c', str(changelist)], stdout=subprocess.PIPE,
                        universal_newlines=True, check=True)
+
 
     if postaction == "submit":
         subprocess.run(['pp4', 'submit', '-c', str(changelist)], stdout=subprocess.PIPE,
                        universal_newlines=True, check=True)
+
+    return changelist, patch_result
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -94,5 +119,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     patch = [x for x in sys.stdin]
-    res = pp4_patch(patch, checkout=args.checkout, checkoutonly=args.checkoutonly, postaction=args.postaction)
+    changelist, res = pp4_patch(patch, checkout=args.checkout, checkoutonly=args.checkoutonly, postaction=args.postaction)
     exit(res)
